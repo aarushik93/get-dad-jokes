@@ -1,0 +1,116 @@
+<div class="gadget">
+    <div class ="body">
+        <div class="spinner spinner--1" vg-if='data.isLoading'></div>
+        <div class="display" vg-if='data.dadJoke.Joke != ""'>
+            <span vg-html='data.dadJoke.Joke'></span>
+        </div>
+    </div>
+    <button class="button" @click="data.HandleClick(event)">Get dad joke</button>
+</div>
+
+<style>
+        .container--box .box .spinner--1 {
+            border-top: 2px solid #fff;
+            animation: spinner1 600ms linear infinite;
+        }
+        @keyframes spinner1 {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    .body {
+    	width: 150px;
+    	height: 250px;
+    	border: 5px solid #404041;
+    	background: #e9df72;
+    	box-sizing: border-box;
+    	padding: 20px;
+    }
+
+    body {
+    	background: #9e97c6;
+    }
+
+    .gadget {
+    	width: 150px;
+    	position: absolute;
+    	top: 50%;
+    	left: 50%;
+    	transform: translate(-50%, -60%);
+    }
+
+    .button {
+    	border-radius: 5px;
+    	border: 4px solid #404041;
+    	margin-top: 20px;
+    	background: $red;
+    	font-family: "Share Tech Mono";
+    	text-align: center;
+    	color: #404041;
+    	padding: 7px;
+    	cursor: pointer;
+    }
+
+    .display {
+    	margin-top: 10px;
+    	height: 80px;
+    	padding: 5px;
+    	font-family: "VT323";
+    	color: #404041;
+    	text-align: center;
+    }
+
+</style>
+
+<script type="application/x-go">
+import "encoding/json"
+import "net/http"
+import "log"
+
+type RootData struct {
+    dadJoke DadJoke
+    isLoading bool
+}
+
+type DadJoke struct {
+    Joke string `json:"joke"`
+}
+
+func (data *RootData) HandleClick(event *vugu.DOMEvent) {
+
+    data.dadJoke = DadJoke{}
+
+    ee := event.EventEnv()
+
+    go func() {
+
+        ee.Lock()
+        data.isLoading = true
+        ee.UnlockRender()
+
+        client := &http.Client{}
+        req, _ := http.NewRequest("GET", "https://icanhazdadjoke.com", nil)
+        req.Header.Set("Accept", "application/json")
+        res, err := client.Do(req)
+        if err != nil {
+            log.Printf("Error fetch()ing: %v", err)
+            return
+        }
+        defer res.Body.Close()
+
+        var newb DadJoke
+        err = json.NewDecoder(res.Body).Decode(&newb)
+        if err != nil {
+            log.Printf("Error JSON decoding: %v", err)
+            return
+        }
+
+        ee.Lock()
+        defer ee.UnlockRender()
+        data.dadJoke = newb
+        data.isLoading = false
+
+    }()
+}
+
+</script>
